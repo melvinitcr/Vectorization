@@ -9,88 +9,87 @@
 #include <cmath>
 using namespace std;
 
-
 #define BPP 32 //Bits per pixel 
 
-/*
- * Con esta función se obtiene la componente imaginaria del mapeo inverso
+/**
+ * Multiplica dos numeros complejos 
+ * @param Z1
+ * @param Z2
+ * @param result
  */
-int calcularMapeoInversoY(int i, int j) {
-    double A = i - j;
-    double B = i + j;
-    double D = 2.1 - 0.003 * i;
-    double E = 2.1 - 0.003 * j;
-    double divisor = pow(D, 2) + pow(E, 2);
-    return ((B * D)-(A * E)) / divisor;
+void multComplex(float *Z1, float *Z2, float *result) {
+    result[0] = Z1[0] * Z2[0] - Z1[1] * Z2[1];
+    result[1] = Z1[0] * Z2[1] + Z1[1] * Z2[0];
 }
 
-/*
- * Con esta función se obtiene la componente real del mapeo inverso 
+/**
+ * Divide dos numeros complejos
+ * @param Z1
+ * @param Z2
+ * @param result
  */
-int calcularMapeoInversoX(int i, int j) {
-    double A = i - j;
-    double B = i + j;
-    double D = 2.1 - 0.003 * i;
-    double E = 2.1 - 0.003 * j;
-    double divisor = pow(D, 2) + pow(E, 2);
-    return ((A * D)+(B * E)) / divisor;
+void divComplex(float *Z1, float *Z2, float *result) {
+    float div = Z2[0] * Z2[0] + Z2[1] * Z2[1];
+    float resultMULT[2];
+    Z2[1] = Z2[1] * -1;
+    multComplex(Z1, Z2, resultMULT);
+    result[0] = resultMULT[0] / div;
+    result[1] = resultMULT[1] / div;
 }
 
-/*
- * Con esta funcion se obtiene la componente real del mapeo bilineal 
+/**
+ * Realiza el mapeo de Z a W
+ * @param ZX
+ * @param result
  */
-int calcularMapeoX(int i, int j) {
-    double A = 2.1 * i - 2.1 * j;
-    double B = 2.1 * i + 2.1 * j;
-    double D = 0.003 * i + 1;
-    double E = 0.003 * j + 1;
-    double C = pow((0.003 * i + 1), 2) + pow((0.003 * j + 1), 2);
-    return (A * D + B * E) / C;
+void mapper(float *ZX, float *result) {
 
+    float Z[2] = {ZX[0], ZX[1]};
+    float C[2] = {0.003, 0};
+    float resultMULT[2];
+    multComplex(C, Z, resultMULT);
+    resultMULT[0] += 1;
+    resultMULT[1] += 1;
+    float A[2] = {2.1, 2.1};
+    float resultMULT2[2];
+    multComplex(A, Z, resultMULT2);
+    divComplex(resultMULT2, resultMULT, result);
 
 }
 
-/*
- * Con esta función se obtiene la componente imaginaria del mapeo bilineal
+/**
+ * Realiza el mapeo inverso de W a Z
+ * @param ZX
+ * @param result
  */
-int calcularMapeoY(int i, int j) {
-    double A = 2.1 * i - 2.1 * j;
-    double B = 2.1 * i + 2.1 * j;
-    double D = 0.003 * i + 1;
-    double E = 0.003 * j + 1;
-    double C = pow((0.003 * i + 1), 2) + pow((0.003 * j + 1), 2);
-    return (-A * E + B * D) / C;
+void inverseMapper(int *ZX, float *result) {
+
+    float W[2] = {ZX[0], ZX[1]};
+    float C[2] = {0.003, 0};
+    float resultMULT[2];
+    multComplex(C, W, resultMULT);
+    resultMULT[0] += -2.1;
+    resultMULT[1] += -2.1;
+    float D[2] = {-1, -1};
+    float resultMULT2[2];
+    multComplex(D, W, resultMULT2);
+    divComplex(resultMULT2, resultMULT, result);
+
 }
 
-int smooth(int ***entrada, int x, int y, int z) {
-    int newRojo = entrada[x + 1][y][z] + entrada[x - 1][y][z] + entrada[x][y + 1][z] + entrada[x][y - 1][z];
-    return newRojo;
-}
+void convertImage(int ***salida, int ***entrada, int width, int height, int depth) {
 
-int suavizado2(int ***entrada, int iTemp, int jTemp, int k, int h, int w, int t) {
+    int i, j, k;
+    
+    for (i = 0; i < width; i++) {
+        for (j = 0; j < height; j++) {
 
-    jTemp = jTemp == 0 ? 1 : jTemp;
-    iTemp = iTemp == 0 ? 1 : iTemp;
+            int Z[2] = {i, height - j};
+            float resultMap[2];
+            inverseMapper(Z, resultMap);
 
-    jTemp = jTemp == (h - 1) ? (h - 2) : jTemp;
-    iTemp = iTemp == (w - 1) ? (w - 2) : iTemp;
-
-    int z = entrada[iTemp + 1][jTemp][k] + entrada[iTemp - 1][jTemp][k] + entrada[iTemp][jTemp + 1][k] + entrada[iTemp][jTemp - 1][k];
-    int x = entrada[iTemp][jTemp][k];
-    z = (z == 0) ? x : z >> 2;
-
-    z = (t == 1) ? 0 : z;
-
-    return z;
-}
-
-void foo(int ***salida, int ***entrada, int width, int height, int depth) {
-
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-
-            int newi = calcularMapeoInversoX(i, height - j);
-            int newj = calcularMapeoInversoY(i, height - j);
+            int newi = resultMap[0];
+            int newj = resultMap[1];
 
             newj = newj >= 0 ? newj : 0;
             newi = newi >= 0 ? newi : 0;
@@ -101,21 +100,8 @@ void foo(int ***salida, int ***entrada, int width, int height, int depth) {
             newj = newi == 0 ? 0 : newj;
             newi = newj == 0 ? 0 : newi;
 
-            for (int k = 0; k < depth; k++) {
-                int x = entrada[newi][height - 1 - newj][k]; // normal          
-                salida[i][j][k] = x;
-            }
-        }
-    }
-}
-
-void suavizado(int ***salida, int ***entrada, int width, int height, int depth) {
-    for (int i = 1; i < width - 1; i++) {
-        for (int j = 1; j < height - 1; j++) {
-            for (int k = 0; k < depth; k++) {
-                int z = entrada[i + 1][j][k] + entrada[i - 1][j][k] + entrada[i][j + 1][k] + entrada[i][j - 1][k];
-                int x = entrada[i][j][k];
-                z = (z == 0) ? x : z >> 2;
+            for (k = 0; k < depth; k++) {
+                int x = entrada[newi][height - 1 - newj][k];
                 salida[i][j][k] = x;
             }
         }
@@ -124,12 +110,13 @@ void suavizado(int ***salida, int ***entrada, int width, int height, int depth) 
 
 int main(int argc, char** argv) {
 
+
     FreeImage_Initialise();
     atexit(FreeImage_DeInitialise);
 
 
-    FREE_IMAGE_FORMAT formato = FreeImage_GetFileType("foto1.jpg", 0);
-    FIBITMAP* bitmap = FreeImage_Load(formato, "foto1.jpg");
+    FREE_IMAGE_FORMAT formato = FreeImage_GetFileType("foto2.jpg", 0);
+    FIBITMAP* bitmap = FreeImage_Load(formato, "foto2.jpg");
 
     FIBITMAP* temp = FreeImage_ConvertTo32Bits(bitmap);
     int width = FreeImage_GetWidth(temp);
@@ -139,10 +126,13 @@ int main(int argc, char** argv) {
     bitmap = temp;
 
 
-    //Inicializar la matrix de entrada
+    //Inicializar la matriz de entrada
     int Dim1 = width;
     int Dim2 = height;
     int Dim3 = 3;
+
+
+
     int ***entrada = new int**[Dim1];
     for (int i(0); i < Dim1; i++)
         entrada[i] = new int*[Dim2];
@@ -162,20 +152,6 @@ int main(int argc, char** argv) {
 
 
 
-    int ***salida2 = new int**[Dim1];
-    for (int i(0); i < Dim1; i++)
-        salida2[i] = new int*[Dim2];
-
-    for (int i(0); i < Dim1; i++)
-        for (int j(0); j < Dim2; j++)
-            salida2[i][j] = new int[Dim3];
-
-
-
-
-
-
-
     // Bitmap a la matrix llenando la entrada
     for (int i = 0; i < width; i++) {
         for (int j = 0; j < height; j++) {
@@ -186,6 +162,7 @@ int main(int argc, char** argv) {
             entrada[i][j][2] = color.rgbRed;
         }
     }
+
     entrada[0][height - 1][0] = 0;
     entrada[0][height - 1][1] = 0;
     entrada[0][height - 1][2] = 0;
@@ -194,16 +171,15 @@ int main(int argc, char** argv) {
     FIBITMAP* new_bitmap = FreeImage_Allocate(width, height, BPP);
 
 
-
     double start_time, run_time;
     start_time = omp_get_wtime();
 
-
     // generar la matrix de salida
-    foo(salida, entrada, width, height, 3);
-   // suavizado(salida2, salida, width, height, 3);
+    convertImage(salida, entrada, width, height, 3);
     run_time = omp_get_wtime() - start_time;
     printf("%lf\n", run_time);
+
+
 
     //convertir matrix a bitmap
     for (int i = 0; i < width; i++) {
@@ -218,9 +194,19 @@ int main(int argc, char** argv) {
 
 
 
+    float Zwidth[2] = {(float) width, 0};
+    float Zheight[2] = {0, (float) height};
+    float resultwidth[2];
+    float resultheight[2];
+
+
+    mapper(Zwidth, resultwidth);
+    mapper(Zheight, resultheight);
+
+
     //Recortar la imagen
-    int newwidth = calcularMapeoX(width, 0);
-    int newheight = calcularMapeoY(0, height);
+    int newwidth = resultwidth[0];
+    int newheight = resultheight[1];
     FIBITMAP * salidaFinal = FreeImage_Allocate(newwidth, newheight, BPP);
     for (int i = 0; i < newwidth; i++) {
         for (int j = 0; j < newheight; j++) {
@@ -229,10 +215,9 @@ int main(int argc, char** argv) {
             FreeImage_SetPixelColor(salidaFinal, i, newheight - j, &color);
         }
     }
+
     FreeImage_Save(FIF_BMP, salidaFinal, "output.bmp");
     FreeImage_Unload(bitmap);
-
-
 
     return 0;
 }
