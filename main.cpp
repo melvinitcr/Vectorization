@@ -7,6 +7,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <cmath>
+
 using namespace std;
 
 #define BPP 32 //Bits per pixel 
@@ -84,7 +85,7 @@ int ***salida2;
 void convertImage(int width, int height, int depth) {
 
     int i, j, k;
-    #pragma omp parallel for private(i,j,k) shared(entrada,salida)
+#pragma omp parallel for private(i,j,k) shared(entrada,salida)
     for (i = 0; i < width; i++) {
         for (j = 0; j < height; j++) {
 
@@ -122,7 +123,7 @@ void suavizado(int width, int height, int depth) {
 
 
     int i, j, k;
-    #pragma omp parallel for private(i,j,k) shared(salida,salida2)
+#pragma omp parallel for private(i,j,k) shared(salida,salida2)
     for (i = 1; i < width - 1; i++) {
         for (j = 1; j < height - 1; j++) {
             for (k = 0; k < depth; k++) {
@@ -155,8 +156,8 @@ int main(int argc, char** argv) {
     atexit(FreeImage_DeInitialise);
 
 
-    FREE_IMAGE_FORMAT formato = FreeImage_GetFileType("foto1.jpg", 0);
-    FIBITMAP* bitmap = FreeImage_Load(formato, "foto1.jpg");
+    FREE_IMAGE_FORMAT formato = FreeImage_GetFileType("foto2.jpg", 0);
+    FIBITMAP* bitmap = FreeImage_Load(formato, "foto2.jpg");
 
     FIBITMAP* temp = FreeImage_ConvertTo32Bits(bitmap);
     int width = FreeImage_GetWidth(temp);
@@ -216,7 +217,7 @@ int main(int argc, char** argv) {
     entrada[0][height - 1][2] = 0;
 
 
-    FIBITMAP* new_bitmap = FreeImage_Allocate(width, height, BPP);
+    // FIBITMAP* new_bitmap = FreeImage_Allocate(width, height, BPP);
 
 
     double start_time, run_time;
@@ -230,43 +231,43 @@ int main(int argc, char** argv) {
 
 
 
-    //convertir matrix a bitmap
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-            RGBQUAD color;
-            color.rgbBlue = salida2[i][j][0];
-            color.rgbGreen = salida2[i][j][1];
-            color.rgbRed = salida2[i][j][2];
-            FreeImage_SetPixelColor(new_bitmap, i, j, &color);
-        }
-    }
-
-
-
-    float Zwidth[2] = {(float) width, 0};
-    float Zheight[2] = {0, (float) height};
-    float resultwidth[2];
-    float resultheight[2];
-
-
-    mapper(Zwidth, resultwidth);
-    mapper(Zheight, resultheight);
-
-
-    //Recortar la imagen
-    int newwidth = resultwidth[0];
-    int newheight = resultheight[1];
-    FIBITMAP * salidaFinal = FreeImage_Allocate(newwidth, newheight, BPP);
-    for (int i = 0; i < newwidth; i++) {
-        for (int j = 0; j < newheight; j++) {
-            RGBQUAD color;
-            FreeImage_GetPixelColor(new_bitmap, i, height - j, &color);
-            FreeImage_SetPixelColor(salidaFinal, i, newheight - j, &color);
-        }
-    }
-
-    FreeImage_Save(FIF_BMP, salidaFinal, "output.bmp");
-    FreeImage_Unload(bitmap);
+    //    //convertir matrix a bitmap
+    //    for (int i = 0; i < width; i++) {
+    //        for (int j = 0; j < height; j++) {
+    //            RGBQUAD color;
+    //            color.rgbBlue = salida2[i][j][0];
+    //            color.rgbGreen = salida2[i][j][1];
+    //            color.rgbRed = salida2[i][j][2];
+    //            FreeImage_SetPixelColor(new_bitmap, i, j, &color);
+    //        }
+    //    }
+    //
+    //
+    //
+    //    float Zwidth[2] = {(float) width, 0};
+    //    float Zheight[2] = {0, (float) height};
+    //    float resultwidth[2];
+    //    float resultheight[2];
+    //
+    //
+    //    mapper(Zwidth, resultwidth);
+    //    mapper(Zheight, resultheight);
+    //
+    //
+    //    //Recortar la imagen
+    //    int newwidth = resultwidth[0];
+    //    int newheight = resultheight[1];
+    //    FIBITMAP * salidaFinal = FreeImage_Allocate(newwidth, newheight, BPP);
+    //    for (int i = 0; i < newwidth; i++) {
+    //        for (int j = 0; j < newheight; j++) {
+    //            RGBQUAD color;
+    //            FreeImage_GetPixelColor(new_bitmap, i, height - j, &color);
+    //            FreeImage_SetPixelColor(salidaFinal, i, newheight - j, &color);
+    //        }
+    //    }
+    //
+    //    FreeImage_Save(FIF_BMP, salidaFinal, "output.bmp");
+    //    FreeImage_Unload(bitmap);
 
     return 0;
 
